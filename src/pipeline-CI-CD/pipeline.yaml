@@ -55,6 +55,24 @@ spec:
       workspaces:
         - name: source
           workspace: shared-workspace
+    
+        - name: debug-workspace
+      runAfter:
+        - clone
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: list-files
+            image: alpine
+            workingDir: /workspace/source
+            script: |
+              echo "🔍 DEBUG: contenuto del workspace dopo il clone"
+              ls -la /workspace/source
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
 
     # 2️⃣ Installazione dipendenze e build
     - name: npm-build
