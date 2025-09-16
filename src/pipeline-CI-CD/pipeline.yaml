@@ -19,10 +19,19 @@ spec:
   tasks:
     # 1️⃣ Clona il repository
     - name: clone
-      taskRef:
-        apiVersion: tekton.dev/v1beta1
-        kind: ClusterTask
-        name: git-clone
+      taskSpec:
+        workspaces:
+          - name: output
+        params:
+          - name: url
+            type: string
+          - name: revision
+            type: string
+        steps:
+          - name: git-clone
+            image: alpine/git
+            script: |
+              git clone -b $(params.revision) $(params.url) /workspace/output
       params:
         - name: url
           value: $(params.git-url)
