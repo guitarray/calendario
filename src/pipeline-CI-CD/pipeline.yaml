@@ -20,6 +20,7 @@ spec:
     # 1️⃣ Clona il repository
     - name: clone
       taskRef:
+        apiVersion: tekton.dev/v1beta1
         kind: ClusterTask
         name: git-clone
       params:
