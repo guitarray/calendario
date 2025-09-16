@@ -79,15 +79,19 @@ spec:
     # 4️⃣ Build immagine container con Buildah
     - name: build-image
       runAfter: [sonar-analysis]
-      taskSpec:
-        workspaces:
-          - name: source
-        steps:
-          - name: build
-            image: quay.io/buildah/stable:latest
-            workingDir: /workspace/source
-            script: |
-              buildah bud -t $(params.image-url) .
+      taskRef:
+        apiVersion: tekton.dev/v1beta1
+        kind: ClusterTask
+        name: buildah
+      params:
+        - name: IMAGE
+          value: image-registry.openshift-image-registry.svc:5000/raimondopd-dev/calendario:latest
+        - name: CONTEXT
+          value: .
+        - name: FORMAT
+          value: docker
+        - name: TLSVERIFY
+          value: "false"
       workspaces:
         - name: source
           workspace: shared-workspace
