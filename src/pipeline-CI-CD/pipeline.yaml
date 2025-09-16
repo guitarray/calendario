@@ -19,7 +19,6 @@ spec:
     - name: shared-workspace
 
   tasks:
-    # 1️⃣ Clona il repository (inline)
     - name: clone
       taskSpec:
         workspaces:
@@ -34,7 +33,7 @@ spec:
             image: alpine/git
             workingDir: /workspace/output
             script: |
-              echo "🔄 Cloning repository $(params.url) branch $(params.revision)"
+              echo "🔄 Cloning repository $(params.url) (branch $(params.revision))"
               rm -rf /workspace/output/*
               git clone -b $(params.revision) $(params.url) /workspace/output
               echo "✅ Clone completed"
@@ -47,9 +46,9 @@ spec:
         - name: output
           workspace: shared-workspace
 
-    # 2️⃣ Installazione dipendenze e build/test
     - name: npm-build
-      runAfter: [clone]
+      runAfter:
+        - clone
       taskSpec:
         workspaces:
           - name: output
@@ -64,41 +63,4 @@ spec:
                 echo "❌ ERRORE: package.json non trovato!"
                 exit 1
               fi
-              echo "📦 Installazione dipendenze..."
-              npm install
-              echo "🏗️ Build del progetto..."
-              npm run build || echo "⚠️ Build fallita, ma continuiamo..."
-              npm test || echo "⚠️ Test falliti, ma continuiamo..."
-      workspaces:
-        - name: output
-          workspace: shared-workspace
-
-    # 3️⃣ Analisi SonarCloud
-    - name: sonar-analysis
-      runAfter: [npm-build]
-      taskSpec:
-        workspaces:
-          - name: output
-        steps:
-          - name: sonar
-            image: sonarsource/sonar-scanner-cli:latest
-            workingDir: /workspace/output
-            script: |
-              echo "🔎 Avvio analisi SonarCloud..."
-              sonar-scanner \
-                -Dsonar.projectKey=calendario \
-                -Dsonar.sources=. \
-                -Dsonar.host.url=https://sonarcloud.io \
-                -Dsonar.login=$(SONAR_TOKEN)
-            env:
-              - name: SONAR_TOKEN
-                valueFrom:
-                  secretKeyRef:
-                    name: sonar-secret
-                    key: token
-      workspaces:
-        - name: output
-          workspace: shared-workspace
-
-    # 4️⃣ Build immagine container con Buildah
-    - name: build-image
+              echo "📦 Installazione dipend
