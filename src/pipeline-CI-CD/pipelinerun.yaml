@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: calendario-pipeline-run
+  namespace: raimondopd-dev
+spec:
+  pipelineRef:
+    name: calendario-pipeline
+  params:
+    - name: git-url
+      value: https://github.com/guitarray/calendario.git
+    - name: git-revision
+      value: main
+    - name: image-url
+      value: image-registry.openshift-image-registry.svc:5000/raimondopd-dev/calendario:latest
+  workspaces:
+    - name: shared-workspace
+      emptyDir: {}

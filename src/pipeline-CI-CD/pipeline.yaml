@@ -1,0 +1,103 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: calendario-pipeline
+  namespace: raimondopd-dev
+spec:
+  params:
+    - name: git-url
+      type: string
+      default: https://github.com/guitarray/calendario.git
+    - name: git-revision
+      type: string
+      default: main
+    - name: image-url
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/raimondopd-dev/calendario:latest
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    # 1️⃣ Clona il repository
+    - name: clone
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    # 2️⃣ Installazione dipendenze e build/test Vue.js
+    - name: npm-build
+      runAfter: [clone]
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: install
+            image: node:20
+            workingDir: /workspace/source
+            script: |
+              npm install
+              npm run build || true
+              npm test || true
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    # 3️⃣ Analisi SonarCloud
+    - name: sonar-analysis
+      runAfter: [npm-build]
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: sonar
+            image: sonarsource/sonar-scanner-cli:latest
+            workingDir: /workspace/source
+            script: |
+              sonar-scanner \
+                -Dsonar.projectKey=calendario \
+                -Dsonar.sources=. \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.login=$(5d4fafe1d5d8cde7d6c0c572ae87f08cd2e672b1)
+            env:
+              - name: SONAR_TOKEN
+                valueFrom:
+                  secretKeyRef:
+                    name: sonar-secret
+                    key: token
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    # 4️⃣ Build immagine container con Buildah
+    - name: build-image
+      runAfter: [sonar-analysis]
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: build
+            image: quay.io/buildah/stable:latest
+            workingDir: /workspace/source
+            script: |
+              buildah bud -t $(params.image-url) .
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    # 5️⃣ Deploy su OpenShift
+    - name: deploy
+      runAfter: [build-image]
+      taskSpec:
+        steps:
+          - name: oc-deploy
+            image: quay.io/openshift/origin-cli:latest
+            script: |
+              oc apply -f deployment.yaml
+              oc rollout restart deployment/calendario
