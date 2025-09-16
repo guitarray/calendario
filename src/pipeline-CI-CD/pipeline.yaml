@@ -46,19 +46,20 @@ spec:
       runAfter: [clone]
       taskSpec:
         workspaces:
-          - name: source
+          - name: output
         steps:
           - name: install
             image: node:20
-            workingDir: /workspace/source
+            workingDir: /workspace/output
             script: |
+              ls -la
+              cat package.json || echo "⚠️ package.json non trovato"
               npm install
               npm run build || true
               npm test || true
       workspaces:
-        - name: source
+        - name: output
           workspace: shared-workspace
-
     # 3️⃣ Analisi SonarCloud
     - name: sonar-analysis
       runAfter: [npm-build]
